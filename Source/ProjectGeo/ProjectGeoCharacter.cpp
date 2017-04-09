@@ -36,7 +36,7 @@ AProjectGeoCharacter::AProjectGeoCharacter()
 	Mesh1P->CastShadow = false;
 	Mesh1P->RelativeRotation = FRotator(1.9f, -19.19f, 5.2f);
 	Mesh1P->RelativeLocation = FVector(-0.5f, -4.4f, -155.7f);
-
+	
 	// Create a gun mesh component
 	FP_Gun = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("FP_Gun"));
 	FP_Gun->SetOnlyOwnerSee(true);			// only the owning player will see this mesh
@@ -75,15 +75,22 @@ AProjectGeoCharacter::AProjectGeoCharacter()
 	VR_MuzzleLocation->SetupAttachment(VR_Gun);
 	VR_MuzzleLocation->SetRelativeLocation(FVector(0.000004, 53.999992, 10.000000));
 	VR_MuzzleLocation->SetRelativeRotation(FRotator(0.0f, 90.0f, 0.0f));		// Counteract the rotation of the VR gun model.
-
+	
 	// Uncomment the following line to turn motion controllers on by default:
 	//bUsingMotionControllers = true;
+
+	MaximumEnergy = 100.0f;
+	InitialEnergy = 100.0f;
+	CharacterEnergy = InitialEnergy;
+	HasEnergyOrb = true;
 }
 
 void AProjectGeoCharacter::BeginPlay()
 {
 	// Call the base class  
 	Super::BeginPlay();
+
+	HasEnergyOrb = true;
 
 	//Attach gun mesh component to Skeleton, doing it here because the skeleton is not yet created in the constructor
 	FP_Gun->AttachToComponent(Mesh1P, FAttachmentTransformRules(EAttachmentRule::SnapToTarget, true), TEXT("GripPoint"));
@@ -99,6 +106,9 @@ void AProjectGeoCharacter::BeginPlay()
 		VR_Gun->SetHiddenInGame(true, true);
 		Mesh1P->SetHiddenInGame(false, true);
 	}
+
+	VR_Gun->SetHiddenInGame(true, true);
+	Mesh1P->SetHiddenInGame(true, true);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -134,6 +144,12 @@ void AProjectGeoCharacter::SetupPlayerInputComponent(class UInputComponent* Play
 
 void AProjectGeoCharacter::OnFire()
 {
+	if (HasEnergyOrb)
+	{
+		StartDrainEnergy(20.0f, 1.0f);
+	}
+	return;
+
 	// try and fire a projectile
 	if (ProjectileClass != NULL)
 	{
@@ -291,4 +307,83 @@ bool AProjectGeoCharacter::EnableTouchscreenMovement(class UInputComponent* Play
 		//PlayerInputComponent->BindTouch(EInputEvent::IE_Repeat, this, &AProjectGeoCharacter::TouchUpdate);
 	}
 	return bResult;
+}
+
+// Returns starting energy
+float AProjectGeoCharacter::GetInitialEnergy()
+{
+	return InitialEnergy;
+}
+
+// Returns current energy
+float AProjectGeoCharacter::GetCurrentEnergy()
+{
+	return CharacterEnergy;
+}
+
+// Returns maximum energy
+float AProjectGeoCharacter::GetMaximumEnergy()
+{
+	return MaximumEnergy;
+}
+
+// Returns true if character is replenishing energy
+bool AProjectGeoCharacter::GetIsReplenishing()
+{
+	return IsReplenishing;
+}
+
+// Returns true if character is draining energy
+bool AProjectGeoCharacter::GetIsDraining()
+{
+	return IsDraining;
+}
+
+// Returns true if character has energy orb
+bool AProjectGeoCharacter::GetHasEnergyOrb()
+{
+	return HasEnergyOrb;
+}
+
+// Called whenever energy is increased or decreased
+void AProjectGeoCharacter::UpdateEnergy(float EnergyChange)
+{
+	// Change power
+	CharacterEnergy += EnergyChange;
+
+	// Stop replenishing energy when maxed out
+	if (CharacterEnergy >= MaximumEnergy)
+	{
+		CharacterEnergy = MaximumEnergy;
+		IsReplenishing = false;
+	}
+}
+
+void AProjectGeoCharacter::DrainEnergy(float DeltaTime)
+{
+	float drainAmount = DeltaTime * DrainRate;
+	EnergyToDrain -= drainAmount;
+	CharacterEnergy -= drainAmount;
+
+	if (CharacterEnergy <= 0)
+	{
+		IsDraining = false;
+		IsReplenishing = true;
+		HasEnergyOrb = true;
+	}
+	else if (EnergyToDrain <= 0)
+	{
+		IsDraining = false;
+		HasEnergyOrb = true;
+	}
+}
+
+void AProjectGeoCharacter::StartDrainEnergy(float DrainAmount, float DrainTime)
+{
+	IsDraining = true;
+	IsReplenishing = false;
+	HasEnergyOrb = false;
+
+	EnergyToDrain = DrainAmount;
+	DrainRate = DrainAmount / DrainTime;
 }

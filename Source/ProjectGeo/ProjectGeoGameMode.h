@@ -10,6 +10,25 @@ class AProjectGeoGameMode : public AGameModeBase
 
 public:
 	AProjectGeoGameMode();
+
+	virtual void BeginPlay() override;
+
+	virtual void Tick(float DeltaTime) override;
+
+
+protected:
+	/** The rate at which the character replenishes energy */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Energy", Meta = (BlueprintProtected = "true"))
+		float ReplenishRate;
+
+	/** The Widget class to use for HUD screen */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Energy", Meta = (BlueprintProtected = "true"))
+		TSubclassOf<class UUserWidget> HUDWidgetClass;
+
+	/** The instance of the HUD */
+	UPROPERTY()
+		class UUserWidget* CurrentWidget;
+
 };
 
 

@@ -132,5 +132,71 @@ public:
 	/** Returns FirstPersonCameraComponent subobject **/
 	FORCEINLINE class UCameraComponent* GetFirstPersonCameraComponent() const { return FirstPersonCameraComponent; }
 
+
+/** New functions/variables */
+public:
+	/** Accessor function for initial energy */
+	UFUNCTION(BlueprintPure, Category = "Energy")
+		float GetInitialEnergy();
+
+	/** Accessor function for maximum energy */
+	UFUNCTION(BlueprintPure, Category = "Energy")
+		float GetMaximumEnergy();
+
+	/** Accessor function for current energy */
+	UFUNCTION(BlueprintPure, Category = "Energy")
+		float GetCurrentEnergy();
+
+	/** Accessor function for if replenishing energy */
+	UFUNCTION(BlueprintPure, Category = "Energy")
+		bool GetIsReplenishing();
+
+	/** Accessor function for if replenishing energy */
+	UFUNCTION(BlueprintPure, Category = "Energy")
+		bool GetIsDraining();
+
+	/** Accessor function for if character has energy orb */
+	UFUNCTION(BlueprintPure, Category = "Energy")
+		bool GetHasEnergyOrb();
+
+
+	/**
+	Function to update the character's energy
+	* @param EnergyChange This is the amount to change the energy by. It can be positive or negative.
+	*/
+	UFUNCTION(BlueprintCallable, Category = "Energy")
+		void UpdateEnergy(float EnergyChange);
+
+	UFUNCTION(BlueprintCallable, Category = "Energy")
+		void DrainEnergy(float DeltaTime);
+
+	UFUNCTION(BlueprintCallable, Category = "Energy")
+		void StartDrainEnergy(float DrainAmount, float DrainTime);
+
+protected:
+	/** Starting energy level of the character */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Energy", Meta = (BlueprintProtected = "true"))
+		float InitialEnergy;
+
+	/** Maximum energy level of the character */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Energy", Meta = (BlueprintProtected = "true"))
+		float MaximumEnergy;
+
+private:
+	UPROPERTY(VisibleAnywhere, Category = "Energy")
+		float CharacterEnergy;
+
+	UPROPERTY(VisibleAnywhere, Category = "Energy")
+		bool IsReplenishing;
+
+	UPROPERTY(VisibleAnywhere, Category = "Energy")
+		bool IsDraining;
+
+	UPROPERTY(VisibleAnywhere, Category = "Energy")
+		bool HasEnergyOrb;
+
+	float EnergyToDrain;
+	float DrainRate;
+
 };
 

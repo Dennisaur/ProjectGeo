@@ -9,15 +9,15 @@
 AProjectGeoHUD::AProjectGeoHUD()
 {
 	// Set the crosshair texture
-	static ConstructorHelpers::FObjectFinder<UTexture2D> CrosshiarTexObj(TEXT("/Game/FirstPerson/Textures/FirstPersonCrosshair"));
-	CrosshairTex = CrosshiarTexObj.Object;
+	static ConstructorHelpers::FObjectFinder<UTexture2D> CrosshairTexObj(TEXT("/Game/FirstPerson/Textures/FirstPersonCrosshair"));
+	CrosshairTex = CrosshairTexObj.Object;
 }
 
 
 void AProjectGeoHUD::DrawHUD()
 {
 	Super::DrawHUD();
-
+	return;
 	// Draw very simple crosshair
 
 	// find center of the Canvas
