@@ -2,11 +2,14 @@
 
 #include "ProjectGeo.h"
 #include "ProjectGeoCharacter.h"
+#include "ProjectGeoGameMode.h"
 #include "ProjectGeoProjectile.h"
 #include "Animation/AnimInstance.h"
 #include "GameFramework/InputSettings.h"
 #include "Kismet/HeadMountedDisplayFunctionLibrary.h"
 #include "MotionControllerComponent.h"
+#include "Pickup.h"
+#include "EngineUtils.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogFPChar, Warning, All);
 
@@ -79,18 +82,23 @@ AProjectGeoCharacter::AProjectGeoCharacter()
 	// Uncomment the following line to turn motion controllers on by default:
 	//bUsingMotionControllers = true;
 
+	// Set up character energy
 	MaximumEnergy = 100.0f;
 	InitialEnergy = 100.0f;
 	CharacterEnergy = InitialEnergy;
-	HasEnergyOrb = true;
+	HasEnergyOrb = false;
+	HasObtainedOrb = false;
+	
+	// Create collision sphere component to detect objects in range for action
+	ActionSphere = CreateDefaultSubobject<USphereComponent>(TEXT("ActionSphere"));
+	ActionSphere->SetupAttachment(RootComponent);
+	ActionSphere->SetSphereRadius(150.0f);
 }
 
 void AProjectGeoCharacter::BeginPlay()
 {
 	// Call the base class  
 	Super::BeginPlay();
-
-	HasEnergyOrb = true;
 
 	//Attach gun mesh component to Skeleton, doing it here because the skeleton is not yet created in the constructor
 	FP_Gun->AttachToComponent(Mesh1P, FAttachmentTransformRules(EAttachmentRule::SnapToTarget, true), TEXT("GripPoint"));
@@ -128,6 +136,8 @@ void AProjectGeoCharacter::SetupPlayerInputComponent(class UInputComponent* Play
 		PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &AProjectGeoCharacter::OnFire);
 	}
 
+	PlayerInputComponent->BindAction("Action", IE_Pressed, this, &AProjectGeoCharacter::OnAction);
+
 	PlayerInputComponent->BindAction("ResetVR", IE_Pressed, this, &AProjectGeoCharacter::OnResetVR);
 
 	PlayerInputComponent->BindAxis("MoveForward", this, &AProjectGeoCharacter::MoveForward);
@@ -140,14 +150,12 @@ void AProjectGeoCharacter::SetupPlayerInputComponent(class UInputComponent* Play
 	PlayerInputComponent->BindAxis("TurnRate", this, &AProjectGeoCharacter::TurnAtRate);
 	PlayerInputComponent->BindAxis("LookUp", this, &APawn::AddControllerPitchInput);
 	PlayerInputComponent->BindAxis("LookUpRate", this, &AProjectGeoCharacter::LookUpAtRate);
+
 }
 
 void AProjectGeoCharacter::OnFire()
 {
-	if (HasEnergyOrb)
-	{
-		StartDrainEnergy(20.0f, 1.0f);
-	}
+
 	return;
 
 	// try and fire a projectile
@@ -192,6 +200,84 @@ void AProjectGeoCharacter::OnFire()
 		if (AnimInstance != NULL)
 		{
 			AnimInstance->Montage_Play(FireAnimation, 1.f);
+		}
+	}
+}
+
+void AProjectGeoCharacter::OnAction()
+{
+	TArray<AActor*> ActorsInRange;
+	ActionSphere->GetOverlappingActors(ActorsInRange);
+
+	for (int32 iActor = 0; iActor < ActorsInRange.Num(); ++iActor)
+	{
+		// Cast the actor to APickup
+		APickup* const TestPickup = Cast<APickup>(ActorsInRange[iActor]);
+		if (!HasEnergyOrb && TestPickup)
+		{
+			// Display the HUD widget with energy bar for the first time picking up orb
+			if (!HasObtainedOrb) {
+				HasObtainedOrb = true;
+
+				AProjectGeoGameMode* const GameMode = Cast<AProjectGeoGameMode>(GetWorld()->GetAuthGameMode());
+				if (GameMode)
+				{
+					GameMode->ShowHUDWidget();
+				}
+			}
+
+			// Pick up the energy orb
+			HasEnergyOrb = true;
+
+			// Halts indicator charge and stops draining energy
+			if (CurrentIndicator)
+			{
+				IsDraining = false;
+				DrainRate = 0;
+				CurrentIndicator->Interact();
+				CurrentIndicator = NULL;
+			}
+
+			// Destroys the pickup
+			TestPickup->Interact();
+
+			break;
+		}
+
+		// If orb is already being used on an indicator, skip checking other indicators
+		if (CurrentIndicator)
+		{
+			continue;
+		}
+		else
+		{
+			// Cast the actor to AIndicator
+			AIndicator* const TestIndicator = Cast<AIndicator>(ActorsInRange[iActor]);
+			if (HasEnergyOrb && TestIndicator && !TestIndicator->GetCompletedCharge())
+			{
+				// Set this to current indicator
+				CurrentIndicator = TestIndicator;
+
+				// Spawn the orb actor at the indicator
+				UWorld* const World = GetWorld();
+				if (World)
+				{
+					FActorSpawnParameters SpawnParams;
+					const FTransform IndicatorTransform = ActorsInRange[iActor]->GetTransform();
+					APickup* const Orb = World->SpawnActor<APickup>(OrbPickup, IndicatorTransform, SpawnParams);
+				}
+
+				// Start draining, stop replenishing, and drop energy orb
+				IsDraining = true;
+				IsReplenishing = false;
+				HasEnergyOrb = false;
+
+				// Set drain rate
+				float EnergyCost = CurrentIndicator->GetEnergyCost();
+				float DrainTime = CurrentIndicator->GetDrainTime();
+				DrainRate = EnergyCost / DrainTime;
+			}
+			break;
 		}
 	}
 }
@@ -345,6 +431,11 @@ bool AProjectGeoCharacter::GetHasEnergyOrb()
 	return HasEnergyOrb;
 }
 
+bool AProjectGeoCharacter::GetHasObtainedOrb()
+{
+	return HasObtainedOrb;
+}
+
 // Called whenever energy is increased or decreased
 void AProjectGeoCharacter::UpdateEnergy(float EnergyChange)
 {
@@ -359,31 +450,34 @@ void AProjectGeoCharacter::UpdateEnergy(float EnergyChange)
 	}
 }
 
+// Called at each tick to drain energy based on drain rate
 void AProjectGeoCharacter::DrainEnergy(float DeltaTime)
 {
-	float drainAmount = DeltaTime * DrainRate;
-	EnergyToDrain -= drainAmount;
-	CharacterEnergy -= drainAmount;
+	float DrainAmount = DeltaTime * DrainRate;
+	UpdateEnergy(-DrainAmount);
+
+	if (CurrentIndicator)
+	{
+		CurrentIndicator->UpdateEnergy(-DrainAmount);
+	}
 
 	if (CharacterEnergy <= 0)
 	{
+		// Ran out of energy, start replenishing
+		CharacterEnergy = 0;
 		IsDraining = false;
 		IsReplenishing = true;
-		HasEnergyOrb = true;
 	}
-	else if (EnergyToDrain <= 0)
+	else if (CurrentIndicator && CurrentIndicator->GetCompletedCharge())
 	{
+		// Indicator fully charge, stop draining energy
 		IsDraining = false;
-		HasEnergyOrb = true;
 	}
 }
 
-void AProjectGeoCharacter::StartDrainEnergy(float DrainAmount, float DrainTime)
+// Pick up energy orb
+void AProjectGeoCharacter::PickupOrb()
 {
-	IsDraining = true;
-	IsReplenishing = false;
-	HasEnergyOrb = false;
-
-	EnergyToDrain = DrainAmount;
-	DrainRate = DrainAmount / DrainTime;
+	HasObtainedOrb = true;
+	HasEnergyOrb = true;
 }

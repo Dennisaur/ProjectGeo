@@ -15,6 +15,8 @@ public:
 
 	virtual void Tick(float DeltaTime) override;
 
+	void ShowHUDWidget();
+
 
 protected:
 	/** The rate at which the character replenishes energy */

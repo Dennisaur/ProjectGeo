@@ -26,15 +26,6 @@ AProjectGeoGameMode::AProjectGeoGameMode()
 void AProjectGeoGameMode::BeginPlay()
 {
 	Super::BeginPlay();
-
-	if (HUDWidgetClass != nullptr)
-	{
-		CurrentWidget = CreateWidget<UUserWidget>(GetWorld(), HUDWidgetClass);
-		if (CurrentWidget != nullptr)
-		{
-			CurrentWidget->AddToViewport();
-		}
-	}
 }
 
 void AProjectGeoGameMode::Tick(float DeltaTime)
@@ -58,5 +49,21 @@ void AProjectGeoGameMode::Tick(float DeltaTime)
 			// Drain energy
 			MyCharacter->DrainEnergy(DeltaTime);
 		}
+
+		//UE_LOG(LogClass, Log, TEXT("You have %d energy"), currentEnergy);
+	}
+
+}
+
+void AProjectGeoGameMode::ShowHUDWidget()
+{
+	if (HUDWidgetClass != nullptr)
+	{
+		CurrentWidget = CreateWidget<UUserWidget>(GetWorld(), HUDWidgetClass);
+		if (CurrentWidget != nullptr)
+		{
+			CurrentWidget->AddToViewport();
+		}
 	}
 }
+

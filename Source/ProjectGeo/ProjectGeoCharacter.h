@@ -1,6 +1,7 @@
 // Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
 #pragma once
 #include "GameFramework/Character.h"
+#include "Indicator.h"
 #include "ProjectGeoCharacter.generated.h"
 
 class UInputComponent;
@@ -41,6 +42,7 @@ class AProjectGeoCharacter : public ACharacter
 	/** Motion controller (left hand) */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	class UMotionControllerComponent* L_MotionController;
+
 public:
 	AProjectGeoCharacter();
 
@@ -75,9 +77,12 @@ public:
 	uint32 bUsingMotionControllers : 1;
 
 protected:
-	
+
 	/** Fires a projectile. */
 	void OnFire();
+
+	/** Performs an action. */
+	void OnAction();
 
 	/** Resets HMD orientation and position in VR. */
 	void OnResetVR();
@@ -135,6 +140,13 @@ public:
 
 /** New functions/variables */
 public:
+	// Sphere component to determine nearby actionable objects
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
+		class USphereComponent* ActionSphere;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Energy")
+		TSubclassOf<class APickup> OrbPickup;
+
 	/** Accessor function for initial energy */
 	UFUNCTION(BlueprintPure, Category = "Energy")
 		float GetInitialEnergy();
@@ -159,6 +171,9 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Energy")
 		bool GetHasEnergyOrb();
 
+	/** Accessor function for if character has obtained the orb */
+	UFUNCTION(BlueprintPure, Category = "Energy")
+		bool GetHasObtainedOrb();
 
 	/**
 	Function to update the character's energy
@@ -171,7 +186,7 @@ public:
 		void DrainEnergy(float DeltaTime);
 
 	UFUNCTION(BlueprintCallable, Category = "Energy")
-		void StartDrainEnergy(float DrainAmount, float DrainTime);
+		void PickupOrb();
 
 protected:
 	/** Starting energy level of the character */
@@ -195,7 +210,10 @@ private:
 	UPROPERTY(VisibleAnywhere, Category = "Energy")
 		bool HasEnergyOrb;
 
-	float EnergyToDrain;
+	UPROPERTY(VisibleAnywhere, Category = "Energy")
+		bool HasObtainedOrb;
+
+	class AIndicator* CurrentIndicator;
 	float DrainRate;
 
 };
