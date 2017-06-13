@@ -232,9 +232,8 @@ void AProjectGeoCharacter::OnAction()
 			// Halts indicator charge and stops draining energy
 			if (CurrentIndicator)
 			{
-				IsDraining = false;
 				DrainRate = 0;
-				CurrentIndicator->Interact();
+				CurrentIndicator->SetUsingOrb(false);
 				CurrentIndicator = NULL;
 			}
 
@@ -244,11 +243,12 @@ void AProjectGeoCharacter::OnAction()
 			break;
 		}
 
-		// If orb is already being used on an indicator, skip checking other indicators
-		if (CurrentIndicator)
+		// If orb is already being used on an indicator or orb is recharging, skip checking for other indicators
+		if (CurrentIndicator || IsSuperCharging)
 		{
 			continue;
 		}
+		// Place orb at current indicator
 		else
 		{
 			// Cast the actor to AIndicator
@@ -257,6 +257,7 @@ void AProjectGeoCharacter::OnAction()
 			{
 				// Set this to current indicator
 				CurrentIndicator = TestIndicator;
+				CurrentIndicator->SetUsingOrb(true);
 
 				// Spawn the orb actor at the indicator
 				UWorld* const World = GetWorld();
@@ -267,15 +268,18 @@ void AProjectGeoCharacter::OnAction()
 					APickup* const Orb = World->SpawnActor<APickup>(OrbPickup, IndicatorTransform, SpawnParams);
 				}
 
-				// Start draining, stop replenishing, and drop energy orb
-				IsDraining = true;
-				IsReplenishing = false;
+				// Drop energy orb
 				HasEnergyOrb = false;
 
 				// Set drain rate
-				float EnergyCost = CurrentIndicator->GetEnergyCost();
-				float DrainTime = CurrentIndicator->GetDrainTime();
-				DrainRate = EnergyCost / DrainTime;
+				if (CurrentIndicator->GetIsContinuous()) {
+					DrainRate = CurrentIndicator->GetEnergyPerSecond();
+				}
+				else {
+					float EnergyCost = CurrentIndicator->GetEnergyCost();
+					float DrainTime = CurrentIndicator->GetDrainTime();
+					DrainRate = EnergyCost / DrainTime;
+				}
 			}
 			break;
 		}
@@ -413,16 +417,10 @@ float AProjectGeoCharacter::GetMaximumEnergy()
 	return MaximumEnergy;
 }
 
-// Returns true if character is replenishing energy
-bool AProjectGeoCharacter::GetIsReplenishing()
+// Returns true if character is supercharging
+bool AProjectGeoCharacter::GetIsSuperCharging()
 {
-	return IsReplenishing;
-}
-
-// Returns true if character is draining energy
-bool AProjectGeoCharacter::GetIsDraining()
-{
-	return IsDraining;
+	return IsSuperCharging;
 }
 
 // Returns true if character has energy orb
@@ -431,6 +429,7 @@ bool AProjectGeoCharacter::GetHasEnergyOrb()
 	return HasEnergyOrb;
 }
 
+// Returns true after character first picks up energy orb
 bool AProjectGeoCharacter::GetHasObtainedOrb()
 {
 	return HasObtainedOrb;
@@ -446,7 +445,7 @@ void AProjectGeoCharacter::UpdateEnergy(float EnergyChange)
 	if (CharacterEnergy >= MaximumEnergy)
 	{
 		CharacterEnergy = MaximumEnergy;
-		IsReplenishing = false;
+		IsSuperCharging = false;
 	}
 }
 
@@ -454,24 +453,28 @@ void AProjectGeoCharacter::UpdateEnergy(float EnergyChange)
 void AProjectGeoCharacter::DrainEnergy(float DeltaTime)
 {
 	float DrainAmount = DeltaTime * DrainRate;
-	UpdateEnergy(-DrainAmount);
 
 	if (CurrentIndicator)
 	{
-		CurrentIndicator->UpdateEnergy(-DrainAmount);
+		if (!CurrentIndicator->GetCompletedCharge()) {
+			// Drain character energy
+			UpdateEnergy(-DrainAmount);
+
+			// Fill indicator charge
+			CurrentIndicator->UpdateEnergy(DrainAmount);
+		}
+
 	}
 
 	if (CharacterEnergy <= 0)
 	{
 		// Ran out of energy, start replenishing
 		CharacterEnergy = 0;
-		IsDraining = false;
-		IsReplenishing = true;
+		IsSuperCharging = true;
 	}
 	else if (CurrentIndicator && CurrentIndicator->GetCompletedCharge())
 	{
 		// Indicator fully charge, stop draining energy
-		IsDraining = false;
 	}
 }
 

@@ -21,6 +21,7 @@ AProjectGeoGameMode::AProjectGeoGameMode()
 
 	// Base replenish rate
 	ReplenishRate = 1.0f;
+	SuperChargeRate = 2.0f;
 }
 
 void AProjectGeoGameMode::BeginPlay()
@@ -36,15 +37,20 @@ void AProjectGeoGameMode::Tick(float DeltaTime)
 	if (MyCharacter)
 	{
 		float currentEnergy = MyCharacter->GetCurrentEnergy();
-		bool isReplenishing = MyCharacter->GetIsReplenishing();
-		bool isDraining = MyCharacter->GetIsDraining();
+		bool hasOrb = MyCharacter->GetHasEnergyOrb();
+		bool isSuperCharging = MyCharacter->GetIsSuperCharging();
 
-		if (isReplenishing && currentEnergy < 100.f)
+		if (hasOrb && currentEnergy < 100.f)
 		{
 			// Replenish energy
-			MyCharacter->UpdateEnergy(DeltaTime * ReplenishRate);
+			if (isSuperCharging) {
+				MyCharacter->UpdateEnergy(DeltaTime * SuperChargeRate);
+			}
+			else {
+				MyCharacter->UpdateEnergy(DeltaTime * ReplenishRate);
+			}
 		}
-		else if (isDraining && currentEnergy >= 0)
+		else if (!hasOrb && currentEnergy > 0)
 		{
 			// Drain energy
 			MyCharacter->DrainEnergy(DeltaTime);

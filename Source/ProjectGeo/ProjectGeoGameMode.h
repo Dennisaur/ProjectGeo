@@ -23,6 +23,10 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Energy", Meta = (BlueprintProtected = "true"))
 		float ReplenishRate;
 
+	/** The rate at which the character replenishes energy after fully depleted */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Energy", Meta = (BlueprintProtected = "true"))
+		float SuperChargeRate;
+
 	/** The Widget class to use for HUD screen */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Energy", Meta = (BlueprintProtected = "true"))
 		TSubclassOf<class UUserWidget> HUDWidgetClass;

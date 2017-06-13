@@ -6,14 +6,25 @@
 AIndicator::AIndicator()
 {
 	UsingEnergyOrb = false;
+	Energy = 0;
 }
 
 void AIndicator::BeginPlay()
 {
 	// Call the base class  
 	Super::BeginPlay();
+}
 
-	EnergyToCharge = EnergyCost;
+/** Returns true if indicator will continuously use energy */
+bool AIndicator::GetIsContinuous()
+{
+	return IsContinuous;
+}
+
+/** Returns energy used per second */
+float AIndicator::GetEnergyPerSecond()
+{
+	return EnergyPerSecond;
 }
 
 /** Returns energy cost to interact with indicator */
@@ -29,9 +40,19 @@ float AIndicator::GetDrainTime()
 }
 
 /** Returns remaining energy necessary to fully charge indicator */
-float AIndicator::GetEnergyToCharge()
+float AIndicator::GetEnergy()
 {
-	return EnergyToCharge;
+	return Energy;
+}
+
+/** Returns true if indicator is currently using the energy orb */
+bool AIndicator::GetUsingOrb()
+{
+	return UsingEnergyOrb;
+}
+
+void AIndicator::SetUsingOrb(bool UsingOrb) {
+	UsingEnergyOrb = UsingOrb;
 }
 
 /** Returns true if indicator has been charged */
@@ -62,12 +83,15 @@ void AIndicator::Interact()
 // Called when indicator is being charged
 void AIndicator::UpdateEnergy(float EnergyChange)
 {
-	// Change power
-	EnergyToCharge += EnergyChange;
+	// Change energy
+	Energy += EnergyChange;
 
-	// Stop replenishing energy when maxed out
-	if (EnergyToCharge <= 0)
+	// Stop filling energy when maxed out
+	if (!IsContinuous && Energy >= EnergyCost)
 	{
+		Energy = EnergyCost;
 		CompletedCharge = true;
+
+		UE_LOG(LogClass, Log, TEXT("You have %d energy"), Energy);
 	}
 }

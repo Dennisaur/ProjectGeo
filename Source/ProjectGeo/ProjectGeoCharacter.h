@@ -159,13 +159,9 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Energy")
 		float GetCurrentEnergy();
 
-	/** Accessor function for if replenishing energy */
+	/** Accessor function for if supercharging energy */
 	UFUNCTION(BlueprintPure, Category = "Energy")
-		bool GetIsReplenishing();
-
-	/** Accessor function for if replenishing energy */
-	UFUNCTION(BlueprintPure, Category = "Energy")
-		bool GetIsDraining();
+		bool GetIsSuperCharging();
 
 	/** Accessor function for if character has energy orb */
 	UFUNCTION(BlueprintPure, Category = "Energy")
@@ -202,10 +198,7 @@ private:
 		float CharacterEnergy;
 
 	UPROPERTY(VisibleAnywhere, Category = "Energy")
-		bool IsReplenishing;
-
-	UPROPERTY(VisibleAnywhere, Category = "Energy")
-		bool IsDraining;
+		bool IsSuperCharging;
 
 	UPROPERTY(VisibleAnywhere, Category = "Energy")
 		bool HasEnergyOrb;
